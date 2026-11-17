@@ -4,6 +4,7 @@ use App\Http\Controllers\Api\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Api\AllergenController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\CategoryController;
+use App\Http\Controllers\Api\ExchangeRateController;
 use App\Http\Controllers\Api\GroupController;
 use App\Http\Controllers\Api\OpenFoodFactsController;
 use App\Http\Controllers\Api\PreferenceController;
@@ -84,6 +85,9 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
     Route::delete('/shopping-lists/{shoppingList}/items/{item}', [ShoppingListItemController::class, 'destroy']);
 
     // --- Statistics + export
+    // --- Exchange rates (prices are stored in EUR; local currencies are shown at the ECB rate)
+    Route::get('/exchange-rates', [ExchangeRateController::class, 'index']);
+
     Route::get('/stats', [StatisticsController::class, 'index']);
     Route::get('/stats/export/all', [StatisticsController::class, 'exportAll']);
     Route::get('/stats/{report}', [StatisticsController::class, 'show']);
@@ -101,5 +105,7 @@ Route::middleware(['auth:sanctum', 'active'])->group(function () {
         Route::post('/allergens', [AllergenController::class, 'store']);
         Route::put('/allergens/{allergen}', [AllergenController::class, 'update']);
         Route::delete('/allergens/{allergen}', [AllergenController::class, 'destroy']);
+
+        Route::post('/exchange-rates/refresh', [ExchangeRateController::class, 'refresh'])->middleware('throttle:10,1,fx-refresh');
     });
 });

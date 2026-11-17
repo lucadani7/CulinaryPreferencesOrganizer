@@ -276,3 +276,16 @@ export interface Recommendations {
   month: number;
   products: Product[];
 }
+
+/** GET /exchange-rates: prices are stored in EUR, local currencies are shown at the ECB rate. */
+export interface ExchangeRates {
+  base: 'EUR';
+  /** ECB publication day of the rates (null before the first download) */
+  date: string | null;
+  source: string;
+  /** units of each currency for 1 EUR */
+  rates: Record<string, number>;
+  /** currency of the user's country, null in the euro area */
+  local_currency: string | null;
+  local_rate: number | null;
+}

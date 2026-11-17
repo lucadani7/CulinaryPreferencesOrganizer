@@ -25,6 +25,7 @@ tags:
   - { name: Groups }
   - { name: Shopping lists }
   - { name: Statistics }
+  - { name: Exchange rates, description: "Prices are stored in EUR; local currencies are shown at the ECB reference rate (via Frankfurter)" }
   - { name: Administration }
 
 components:
@@ -352,6 +353,31 @@ paths:
   /shopping-lists/{id}/items/{item}/toggle:
     patch: { tags: [Shopping lists], parameters: [{ $ref: '#/components/parameters/id' }, { name: item, in: path, required: true, schema: { type: integer } }], summary: "Check / uncheck (the list completes automatically)", responses: { '200': { description: Toggled } } }
 
+  /exchange-rates:
+    get:
+      tags: [Exchange rates]
+      summary: Latest euro rates and the local currency of the user's country
+      parameters: [{ name: country, in: query, schema: { type: string, example: HU }, description: "ISO 3166-1 alpha-2; the user's country by default" }]
+      responses:
+        '200':
+          description: Rates
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  base: { type: string, example: EUR }
+                  date: { type: [string, 'null'], format: date, description: "ECB publication day of the rates" }
+                  source: { type: string, example: European Central Bank }
+                  rates: { type: object, additionalProperties: { type: number }, example: { RON: 5.0921, HUF: 391.2 } }
+                  local_currency: { type: [string, 'null'], example: RON, description: "null in the euro area" }
+                  local_rate: { type: [number, 'null'], example: 5.0921 }
+  /admin/exchange-rates/refresh:
+    post:
+      tags: [Administration]
+      summary: Download the ECB rates of a day (latest by default)
+      requestBody: { content: { application/json: { schema: { type: object, properties: { date: { type: string, format: date } } } } } }
+      responses: { '200': { description: Stored }, '502': { description: Provider unreachable } }
   /stats:
     get: { tags: [Statistics], summary: Available reports, responses: { '200': { description: "overview, preferences-by-sentiment, top-products, categories, allergens, nutriscore, perishability, seasonality, spending, shopping-top-items" } } }
   /stats/{report}:

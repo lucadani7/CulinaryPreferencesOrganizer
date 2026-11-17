@@ -310,8 +310,8 @@ class StatisticsService
             ];
         }
         return [
-            'description' => 'Estimated value (RON) of shopping lists, planned vs. checked off, last 12 months.',
-            'columns' => ['month' => 'Month', 'planned' => 'Planned (RON)', 'bought' => 'Bought (RON)'],
+            'description' => 'Estimated value (EUR) of shopping lists, planned vs. checked off, last 12 months.',
+            'columns' => ['month' => 'Month', 'planned' => 'Planned (EUR)', 'bought' => 'Bought (EUR)'],
             'rows' => $rows,
             'chart' => 'line',
         ];

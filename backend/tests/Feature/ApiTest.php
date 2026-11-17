@@ -25,6 +25,7 @@ class ApiTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        config(['currency.auto_refresh' => false]); // no real HTTP calls to the exchange rate service
         $this->seed(DatabaseSeeder::class);
     }
 
@@ -212,5 +213,35 @@ class ApiTest extends TestCase
         $this->assertTrue($product->allergens->contains(Allergen::where('off_tag', 'en:milk')->first()));
         $this->assertSame('Sweets', $product->category->name);
         $this->assertEqualsCanonicalizing(['RO', 'FR'], $product->availabilities->pluck('region')->all());
+    }
+
+    public function test_exchange_rates_are_stored_and_shown_in_the_local_currency(): void
+    {
+        Http::fake(['api.frankfurter.dev/*' => Http::response([
+            ['date' => '2026-11-17', 'base' => 'EUR', 'quote' => 'RON', 'rate' => 5.0],
+            ['date' => '2026-11-17', 'base' => 'EUR', 'quote' => 'HUF', 'rate' => 400.0],
+        ])]);
+        $this->artisan('fx:refresh')->assertSuccessful();
+
+        $ana = User::where('email', 'ana@cpo.test')->first(); // country RO
+        Sanctum::actingAs($ana);
+        $this->getJson('/api/exchange-rates')->assertOk()
+            ->assertJsonPath('base', 'EUR')
+            ->assertJsonPath('date', '2026-11-17')
+            ->assertJsonPath('local_currency', 'RON')
+            ->assertJsonPath('local_rate', 5);
+        $this->getJson('/api/exchange-rates?country=DE')->assertOk()->assertJsonPath('local_currency', null);
+
+        $list = $ana->shoppingLists()->first();
+        $this->get("/api/shopping-lists/{$list->id}/export?format=pdf")->assertOk();
+    }
+
+    public function test_prices_are_stored_in_euro(): void
+    {
+        Sanctum::actingAs(User::where('email', 'ana@cpo.test')->first());
+        $this->postJson('/api/products', ['name' => 'Feta', 'price' => 3.2])
+            ->assertCreated()->assertJsonPath('currency', 'EUR');
+        $this->postJson('/api/products', ['name' => 'Telemea', 'price' => 20, 'currency' => 'RON'])
+            ->assertUnprocessable()->assertJsonValidationErrors('currency');
     }
 }

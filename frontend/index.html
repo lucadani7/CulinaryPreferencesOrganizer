@@ -6,6 +6,14 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Culinary preference management, shopping lists and statistics, based on Open Food Facts data." />
     <title>Culinary Preferences Organizer</title>
+    <script>
+      // set the theme before the first paint, so a dark page never flashes white (see src/theme.ts)
+      try {
+        var t = localStorage.getItem('cpo.theme');
+        var dark = t === 'dark' || (t !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

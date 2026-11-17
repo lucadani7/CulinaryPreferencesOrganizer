@@ -105,7 +105,7 @@ class ProductController extends Controller
     {
         $data = $this->validated($request);
         $product = DB::transaction(function () use ($data, $request) {
-            $product = Product::create($data + ['created_by' => $request->user()->id, 'source' => 'manual']);
+            $product = Product::create($data + ['created_by' => $request->user()->id, 'source' => 'manual', 'currency' => 'EUR']);
             $this->syncRelations($product, $data);
             return $product;
         });
@@ -148,7 +148,8 @@ class ProductController extends Controller
             'category_id' => ['nullable', 'integer', 'exists:categories,id'],
             'image_url' => ['nullable', 'url', 'max:1024'],
             'price' => ['nullable', 'numeric', 'min:0', 'max:99999999'],
-            'currency' => ['nullable', 'string', 'size:3'],
+            // prices are stored in euro; other currencies are only displayed (converted at the ECB rate)
+            'currency' => ['nullable', 'string', Rule::in(['EUR', 'eur'])],
             'quantity' => ['nullable', 'string', 'max:60'],
             'ingredients_text' => ['nullable', 'string', 'max:10000'],
             'nutriscore' => ['nullable', Rule::in(['a', 'b', 'c', 'd', 'e'])],
@@ -177,7 +178,7 @@ class ProductController extends Controller
             }
         }
         if (isset($data['currency'])) {
-            $data['currency'] = strtoupper($data['currency']);
+            $data['currency'] = 'EUR';
         }
         return $data;
     }

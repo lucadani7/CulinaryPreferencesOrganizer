@@ -9,6 +9,7 @@ use App\Models\Product;
 use App\Models\ShoppingList;
 use App\Models\ShoppingListItem;
 use App\Models\User;
+use App\Services\ExchangeRateService;
 use App\Services\ExportService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -201,7 +202,7 @@ class ShoppingListController extends Controller
     }
 
     /** GET /api/shopping-lists/{list}/export?format=csv|pdf */
-    public function export(Request $request, ShoppingList $shoppingList, ExportService $export)
+    public function export(Request $request, ShoppingList $shoppingList, ExportService $export, ExchangeRateService $fx)
     {
         $this->authorizeAccess($request, $shoppingList);
         $format = $request->validate(['format' => ['required', Rule::in(['csv', 'pdf'])]])['format'];
@@ -238,10 +239,22 @@ class ShoppingListController extends Controller
             'columns' => $columns,
             'rows' => $rows,
         ], 'Shopping list', [
-            'Estimated total' => number_format($shoppingList->estimatedTotal(), 2) . ' RON',
-            'Budget' => $shoppingList->budget ? number_format((float) $shoppingList->budget, 2) . ' RON' : '—',
+            'Estimated total' => $this->money($shoppingList->estimatedTotal(), $request, $fx),
+            'Budget' => $shoppingList->budget ? $this->money((float) $shoppingList->budget, $request, $fx) : '—',
             'Checked items' => $shoppingList->items->where('is_checked', true)->count() . ' / ' . $shoppingList->items->count(),
         ]);
+    }
+
+    /** "12.40 EUR (≈ 61.71 RON, ECB rate of 2026-11-17)" for users in a country outside the euro area. */
+    private function money(float $eur, Request $request, ExchangeRateService $fx): string
+    {
+        $text = number_format($eur, 2) . ' EUR';
+        $local = $fx->currencyForCountry($request->user()->country);
+        $converted = $local ? $fx->fromEuro($eur, $local) : null;
+        if ($converted !== null) {
+            $text .= ' (≈ ' . number_format($converted, 2) . " {$local}, ECB rate of " . $fx->latest()['date'] . ')';
+        }
+        return $text;
     }
 
     // ------------------------------------------------------------------ helpers

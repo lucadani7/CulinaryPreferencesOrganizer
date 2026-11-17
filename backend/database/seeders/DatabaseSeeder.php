@@ -77,28 +77,28 @@ class DatabaseSeeder extends Seeder
         $alg = fn (string $tag) => Allergen::where('off_tag', $tag)->value('id');
 
         $products = [
-            ['name' => 'Greek yogurt', 'brand' => 'Olympus', 'category' => 'en:dairies', 'price' => 7.49, 'quantity' => '400 g',
+            ['name' => 'Greek yogurt', 'brand' => 'Olympus', 'category' => 'en:dairies', 'price' => 1.49, 'quantity' => '400 g',
              'is_vegetarian' => true, 'is_vegan' => false, 'perishability' => 'high', 'shelf_life_days' => 21, 'nutriscore' => 'b',
              'allergens' => ['en:milk'], 'seasons' => [['RO', 1, 12]]],
-            ['name' => 'Jonathan apples', 'brand' => null, 'category' => 'en:fruits', 'price' => 4.99, 'quantity' => '1 kg',
+            ['name' => 'Jonathan apples', 'brand' => null, 'category' => 'en:fruits', 'price' => 0.99, 'quantity' => '1 kg',
              'is_vegetarian' => true, 'is_vegan' => true, 'perishability' => 'medium', 'shelf_life_days' => 30, 'nutriscore' => 'a',
              'allergens' => [], 'seasons' => [['RO', 9, 3]]],
-            ['name' => 'Garden tomatoes', 'brand' => null, 'category' => 'en:vegetables', 'price' => 9.99, 'quantity' => '1 kg',
+            ['name' => 'Garden tomatoes', 'brand' => null, 'category' => 'en:vegetables', 'price' => 1.99, 'quantity' => '1 kg',
              'is_vegetarian' => true, 'is_vegan' => true, 'perishability' => 'high', 'shelf_life_days' => 7, 'nutriscore' => 'a',
              'allergens' => [], 'seasons' => [['RO', 6, 9]]],
-            ['name' => 'Wholemeal bread', 'brand' => 'Vel Pitar', 'category' => 'en:breads', 'price' => 5.50, 'quantity' => '500 g',
+            ['name' => 'Wholemeal bread', 'brand' => 'Vel Pitar', 'category' => 'en:breads', 'price' => 1.09, 'quantity' => '500 g',
              'is_vegetarian' => true, 'is_vegan' => true, 'perishability' => 'high', 'shelf_life_days' => 4, 'nutriscore' => 'a',
              'allergens' => ['en:gluten', 'en:sesame-seeds'], 'seasons' => [['RO', 1, 12]]],
-            ['name' => 'Peanut butter', 'brand' => 'Nutline', 'category' => 'en:sweet-snacks', 'price' => 14.90, 'quantity' => '350 g',
+            ['name' => 'Peanut butter', 'brand' => 'Nutline', 'category' => 'en:sweet-snacks', 'price' => 2.99, 'quantity' => '350 g',
              'is_vegetarian' => true, 'is_vegan' => true, 'perishability' => 'low', 'shelf_life_days' => 365, 'nutriscore' => 'c',
              'allergens' => ['en:peanuts'], 'seasons' => [['RO', 1, 12]]],
-            ['name' => 'Chicken breast', 'brand' => 'Agricola', 'category' => 'en:meats', 'price' => 27.99, 'quantity' => '1 kg',
+            ['name' => 'Chicken breast', 'brand' => 'Agricola', 'category' => 'en:meats', 'price' => 5.59, 'quantity' => '1 kg',
              'is_vegetarian' => false, 'is_vegan' => false, 'perishability' => 'high', 'shelf_life_days' => 5, 'nutriscore' => 'a',
              'allergens' => [], 'seasons' => [['RO', 1, 12]]],
-            ['name' => 'Smoked salmon', 'brand' => 'Norvelita', 'category' => 'en:seafood', 'price' => 22.50, 'quantity' => '100 g',
+            ['name' => 'Smoked salmon', 'brand' => 'Norvelita', 'category' => 'en:seafood', 'price' => 4.49, 'quantity' => '100 g',
              'is_vegetarian' => false, 'is_vegan' => false, 'perishability' => 'high', 'shelf_life_days' => 14, 'nutriscore' => 'd',
              'allergens' => ['en:fish'], 'seasons' => [['RO', 1, 12]]],
-            ['name' => 'Butternut squash', 'brand' => null, 'category' => 'en:vegetables', 'price' => 3.49, 'quantity' => '1 kg',
+            ['name' => 'Butternut squash', 'brand' => null, 'category' => 'en:vegetables', 'price' => 0.69, 'quantity' => '1 kg',
              'is_vegetarian' => true, 'is_vegan' => true, 'perishability' => 'low', 'shelf_life_days' => 90, 'nutriscore' => 'a',
              'allergens' => [], 'seasons' => [['RO', 9, 12]]],
         ];
@@ -128,8 +128,8 @@ class DatabaseSeeder extends Seeder
             'has_vegetarian_options' => true, 'latitude' => 44.4268, 'longitude' => 26.1025,
             'created_by' => $admin->id,
         ]);
-        $r1->products()->syncWithoutDetaching([Product::where('name', 'Butternut squash')->value('id') => ['dish_name' => 'Cream of squash soup', 'price' => 19]]);
-        $r2->products()->syncWithoutDetaching([Product::where('name', 'Chicken breast')->value('id') => ['dish_name' => 'Chicken sour soup', 'price' => 22]]);
+        $r1->products()->syncWithoutDetaching([Product::where('name', 'Butternut squash')->value('id') => ['dish_name' => 'Cream of squash soup', 'price' => 3.80]]);
+        $r2->products()->syncWithoutDetaching([Product::where('name', 'Chicken breast')->value('id') => ['dish_name' => 'Chicken sour soup', 'price' => 4.40]]);
 
         // --- Demo preferences
         $prefs = [
@@ -151,14 +151,14 @@ class DatabaseSeeder extends Seeder
 
         // --- Demo shopping list
         $list = ShoppingList::firstOrCreate(['name' => 'Weekly groceries', 'user_id' => $ana->id], [
-            'group_id' => $family->id, 'planned_for' => now()->addDays(2)->toDateString(), 'budget' => 150,
+            'group_id' => $family->id, 'planned_for' => now()->addDays(2)->toDateString(), 'budget' => 30,
         ]);
         if ($list->items()->count() === 0) {
             foreach (['Jonathan apples' => 2, 'Wholemeal bread' => 1, 'Greek yogurt' => 3] as $name => $qty) {
                 $p = Product::where('name', $name)->first();
                 $list->items()->create(['product_id' => $p->id, 'quantity' => $qty, 'unit' => 'pcs', 'unit_price' => $p->price]);
             }
-            $list->items()->create(['custom_name' => 'Mint tea', 'quantity' => 1, 'unit' => 'box', 'unit_price' => 8.5]);
+            $list->items()->create(['custom_name' => 'Mint tea', 'quantity' => 1, 'unit' => 'box', 'unit_price' => 1.69]);
         }
     }
 }

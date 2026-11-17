@@ -47,9 +47,31 @@ services:
                 - '${DB_USERNAME}'
             retries: 3
             timeout: 5s
+    frontend:
+        image: 'node:22-alpine'
+        working_dir: /app
+        # the Corepack bundled with Node 22 can be too old for the pnpm version pinned in package.json
+        command: sh -c "npm install -g corepack@latest && corepack enable && pnpm install --frozen-lockfile && pnpm dev"
+        ports:
+            - '${VITE_PORT:-5173}:5173'
+        environment:
+            CI: 'true'
+            COREPACK_ENABLE_DOWNLOAD_PROMPT: 0
+            VITE_PROXY_TARGET: 'http://laravel.test'
+            VITE_USE_POLLING: 1
+        volumes:
+            - '../frontend:/app'
+            # Linux node_modules stay in the container; the macOS ones in frontend/ are for the editor only
+            - 'frontend-node-modules:/app/node_modules'
+        networks:
+            - sail
+        depends_on:
+            - laravel.test
 networks:
     sail:
         driver: bridge
 volumes:
     sail-pgsql:
+        driver: local
+    frontend-node-modules:
         driver: local
