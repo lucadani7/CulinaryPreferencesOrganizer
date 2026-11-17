@@ -1,0 +1,392 @@
+openapi: 3.1.0
+info:
+  title: Culinary Preferences Organizer API
+  version: 1.0.0
+  description: |
+    REST API for managing the culinary preferences of individuals and groups,
+    based on the open data of [Open Food Facts](https://world.openfoodfacts.org) (ODbL license).
+    Authentication: `Authorization: Bearer <token>` (Laravel Sanctum), obtained from /auth/login.
+    All responses are JSON, except exports (text/csv, application/pdf).
+  license: { name: MIT }
+servers:
+  - url: /api
+    description: Same host as this documentation page
+  - url: http://localhost:8000/api
+    description: Local development (Laravel Sail)
+security:
+  - bearer: []
+tags:
+  - { name: Auth, description: "Registration, login, profile" }
+  - { name: Products }
+  - { name: Open Food Facts }
+  - { name: Taxonomies }
+  - { name: Restaurants }
+  - { name: Preferences }
+  - { name: Groups }
+  - { name: Shopping lists }
+  - { name: Statistics }
+  - { name: Administration }
+
+components:
+  securitySchemes:
+    bearer: { type: http, scheme: bearer }
+  parameters:
+    id: { name: id, in: path, required: true, schema: { type: integer } }
+    format: { name: format, in: query, required: true, schema: { type: string, enum: [csv, pdf] } }
+    scope: { name: scope, in: query, schema: { type: string, enum: [me, group, global], default: me }, description: "global is admin-only" }
+    groupId: { name: group_id, in: query, schema: { type: integer }, description: "required when scope=group" }
+  responses:
+    NoContent: { description: Deleted }
+    Unauthorized: { description: Unauthenticated }
+    Forbidden: { description: Forbidden }
+    ValidationError:
+      description: Invalid data
+      content:
+        application/json:
+          schema: { type: object, properties: { message: { type: string }, errors: { type: object, additionalProperties: { type: array, items: { type: string } } } } }
+    File:
+      description: Exported file
+      content:
+        text/csv: { schema: { type: string } }
+        application/pdf: { schema: { type: string, format: binary } }
+  schemas:
+    Sentiment: { type: string, enum: [love, like, neutral, dislike, avoid] }
+    Diet: { type: string, enum: [omnivore, vegetarian, vegan, pescatarian] }
+    User:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        email: { type: string, format: email }
+        role: { type: string, enum: [user, admin] }
+        is_active: { type: boolean }
+        diet: { $ref: '#/components/schemas/Diet' }
+        country: { type: string, example: RO }
+        allergens: { type: array, items: { type: object, properties: { id: { type: integer }, name: { type: string }, severity: { type: string, enum: [avoid, strict] } } } }
+        groups: { type: array, items: { type: object, properties: { id: { type: integer }, name: { type: string }, role: { type: string } } } }
+    Allergen:
+      type: object
+      properties: { id: { type: integer }, name: { type: string }, off_tag: { type: string, example: 'en:gluten' } }
+    Category:
+      type: object
+      properties: { id: { type: integer }, name: { type: string }, slug: { type: string }, parent_id: { type: [integer, 'null'] }, off_tag: { type: [string, 'null'] } }
+    Availability:
+      type: object
+      required: [region, month_from, month_to]
+      properties:
+        region: { type: string, example: RO }
+        month_from: { type: integer, minimum: 1, maximum: 12 }
+        month_to: { type: integer, minimum: 1, maximum: 12, description: "may be < month_from (range wrapping around the year, e.g. 9→3)" }
+        is_available: { type: boolean }
+        notes: { type: string }
+    ProductInput:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string }
+        brand: { type: string }
+        barcode: { type: string }
+        category_id: { type: integer }
+        image_url: { type: string, format: uri }
+        price: { type: number }
+        currency: { type: string, example: RON }
+        quantity: { type: string, example: '500 g' }
+        ingredients_text: { type: string }
+        nutriscore: { type: string, enum: [a, b, c, d, e] }
+        nova_group: { type: integer, minimum: 1, maximum: 4 }
+        is_vegetarian: { type: [boolean, 'null'] }
+        is_vegan: { type: [boolean, 'null'] }
+        perishability: { type: string, enum: [low, medium, high] }
+        shelf_life_days: { type: integer }
+        expires_at: { type: string, format: date }
+        allergens: { type: array, items: { type: object, properties: { id: { type: integer }, level: { type: string, enum: [contains, traces] } } } }
+        availabilities: { type: array, items: { $ref: '#/components/schemas/Availability' } }
+    Product:
+      allOf:
+        - $ref: '#/components/schemas/ProductInput'
+        - type: object
+          properties:
+            id: { type: integer }
+            source: { type: string, enum: [manual, off] }
+            off_synced_at: { type: [string, 'null'], format: date-time }
+            nutriments: { type: object, additionalProperties: { type: number } }
+            category: { $ref: '#/components/schemas/Category' }
+            my_sentiment: { oneOf: [{ $ref: '#/components/schemas/Sentiment' }, { type: 'null' }] }
+            has_my_allergens: { type: boolean }
+    Preference:
+      type: object
+      properties:
+        id: { type: integer }
+        user_id: { type: integer }
+        group_id: { type: [integer, 'null'] }
+        preferable_type: { type: string, enum: [product, category, restaurant] }
+        preferable_id: { type: integer }
+        sentiment: { $ref: '#/components/schemas/Sentiment' }
+        rating: { type: [integer, 'null'], minimum: 1, maximum: 5 }
+        notes: { type: [string, 'null'] }
+    ShoppingList:
+      type: object
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        group_id: { type: [integer, 'null'] }
+        status: { type: string, enum: [open, completed, archived] }
+        planned_for: { type: [string, 'null'], format: date }
+        budget: { type: [number, 'null'] }
+        estimated_total: { type: number }
+        items: { type: array, items: { $ref: '#/components/schemas/ShoppingListItem' } }
+        warnings: { type: array, items: { type: object, properties: { item_id: { type: integer }, user: { type: string }, reasons: { type: array, items: { type: string } } } } }
+    ShoppingListItem:
+      type: object
+      properties:
+        id: { type: integer }
+        product_id: { type: [integer, 'null'] }
+        custom_name: { type: [string, 'null'] }
+        quantity: { type: number }
+        unit: { type: string }
+        unit_price: { type: [number, 'null'] }
+        is_checked: { type: boolean }
+        notes: { type: [string, 'null'] }
+    Report:
+      type: object
+      properties:
+        key: { type: string }
+        title: { type: string }
+        description: { type: string }
+        columns: { type: object, additionalProperties: { type: string } }
+        rows: { type: array, items: { type: object } }
+        chart: { type: string, enum: [none, bar, pie, line, stacked] }
+        scope: { type: string }
+
+paths:
+  /health:
+    get:
+      tags: [Auth]
+      summary: Health check (no authentication)
+      security: []
+      responses: { '200': { description: 'API is up', content: { application/json: { schema: { type: object, properties: { status: { type: string, example: ok }, time: { type: string, format: date-time } } } } } } }
+  /auth/register:
+    post:
+      tags: [Auth]
+      security: []
+      requestBody:
+        content:
+          application/json:
+            schema: { type: object, required: [name, email, password, password_confirmation], properties: { name: { type: string }, email: { type: string }, password: { type: string }, password_confirmation: { type: string }, diet: { $ref: '#/components/schemas/Diet' }, country: { type: string } } }
+      responses:
+        '201': { description: Account created, content: { application/json: { schema: { type: object, properties: { user: { $ref: '#/components/schemas/User' }, token: { type: string } } } } } }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /auth/login:
+    post:
+      tags: [Auth]
+      security: []
+      requestBody: { content: { application/json: { schema: { type: object, required: [email, password], properties: { email: { type: string }, password: { type: string } } } } } }
+      responses:
+        '200': { description: Authenticated, content: { application/json: { schema: { type: object, properties: { user: { $ref: '#/components/schemas/User' }, token: { type: string } } } } } }
+        '422': { $ref: '#/components/responses/ValidationError' }
+  /auth/logout:
+    post: { tags: [Auth], responses: { '200': { description: Token revoked } } }
+  /auth/me:
+    get: { tags: [Auth], responses: { '200': { description: Profile, content: { application/json: { schema: { $ref: '#/components/schemas/User' } } } }, '401': { $ref: '#/components/responses/Unauthorized' } } }
+    patch:
+      tags: [Auth]
+      summary: Update profile, diet and restrictions (allergens)
+      requestBody: { content: { application/json: { schema: { type: object, properties: { name: { type: string }, email: { type: string }, diet: { $ref: '#/components/schemas/Diet' }, country: { type: string }, allergens: { type: array, items: { type: object, properties: { id: { type: integer }, severity: { type: string, enum: [avoid, strict] } } } } } } } } }
+      responses: { '200': { description: Profile updated } }
+  /auth/me/password:
+    put: { tags: [Auth], responses: { '200': { description: Password changed }, '422': { $ref: '#/components/responses/ValidationError' } } }
+
+  /products:
+    get:
+      tags: [Products]
+      summary: List with filters (search, category, season, region, allergens, diet)
+      parameters:
+        - { name: q, in: query, schema: { type: string } }
+        - { name: category_id, in: query, schema: { type: integer } }
+        - { name: source, in: query, schema: { type: string, enum: [manual, off] } }
+        - { name: perishability, in: query, schema: { type: string, enum: [low, medium, high] } }
+        - { name: nutriscore, in: query, schema: { type: string }, description: "e.g. abc" }
+        - { name: vegan, in: query, schema: { type: boolean } }
+        - { name: vegetarian, in: query, schema: { type: boolean } }
+        - { name: month, in: query, schema: { type: integer, minimum: 1, maximum: 12 } }
+        - { name: region, in: query, schema: { type: string } }
+        - { name: 'exclude_allergens[]', in: query, schema: { type: array, items: { type: integer } } }
+        - { name: safe_for_me, in: query, schema: { type: boolean }, description: "excludes the user's allergens and products incompatible with their diet" }
+        - { name: restaurant_id, in: query, schema: { type: integer } }
+        - { name: sort, in: query, schema: { type: string, enum: [name, -name, price, -price, created_at, -created_at, nutriscore] } }
+        - { name: page, in: query, schema: { type: integer } }
+        - { name: per_page, in: query, schema: { type: integer, maximum: 100 } }
+      responses: { '200': { description: Page of products } }
+    post:
+      tags: [Products]
+      requestBody: { content: { application/json: { schema: { $ref: '#/components/schemas/ProductInput' } } } }
+      responses: { '201': { description: Created, content: { application/json: { schema: { $ref: '#/components/schemas/Product' } } } }, '422': { $ref: '#/components/responses/ValidationError' } }
+  /products/{id}:
+    parameters: [{ $ref: '#/components/parameters/id' }]
+    get: { tags: [Products], summary: "Details + compatibility with the user + preference statistics", responses: { '200': { description: Product } } }
+    put: { tags: [Products], requestBody: { content: { application/json: { schema: { $ref: '#/components/schemas/ProductInput' } } } }, responses: { '200': { description: Updated }, '403': { $ref: '#/components/responses/Forbidden' } } }
+    delete: { tags: [Products], responses: { '204': { $ref: '#/components/responses/NoContent' } } }
+  /products/{id}/images:
+    parameters: [{ $ref: '#/components/parameters/id' }]
+    post:
+      tags: [Products]
+      requestBody:
+        content:
+          multipart/form-data: { schema: { type: object, properties: { image: { type: string, format: binary }, type: { type: string }, set_as_main: { type: boolean } } } }
+          application/json: { schema: { type: object, properties: { url: { type: string, format: uri }, type: { type: string } } } }
+      responses: { '201': { description: Image added } }
+  /products/{id}/images/{image}:
+    delete: { tags: [Products], parameters: [{ $ref: '#/components/parameters/id' }, { name: image, in: path, required: true, schema: { type: integer } }], responses: { '204': { $ref: '#/components/responses/NoContent' } } }
+  /products/{id}/sync:
+    post: { tags: [Open Food Facts], parameters: [{ $ref: '#/components/parameters/id' }], summary: Re-sync the product from OFF, responses: { '200': { description: Synced } } }
+
+  /off/search:
+    get:
+      tags: [Open Food Facts]
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string, minLength: 2 } }
+        - { name: page, in: query, schema: { type: integer } }
+        - { name: page_size, in: query, schema: { type: integer, maximum: 50 } }
+        - { name: country, in: query, schema: { type: string }, description: "e.g. romania" }
+      responses: { '200': { description: "Normalized results; local_id ≠ null if the product is already imported" }, '502': { description: OFF unavailable } }
+  /off/products/{barcode}:
+    get: { tags: [Open Food Facts], parameters: [{ name: barcode, in: path, required: true, schema: { type: string } }], responses: { '200': { description: Normalized OFF product }, '404': { description: Not found } } }
+  /off/import:
+    post:
+      tags: [Open Food Facts]
+      summary: Import an OFF product (allergens, traces, images, diet, Nutri-Score, NOVA, countries)
+      requestBody: { content: { application/json: { schema: { type: object, required: [barcode], properties: { barcode: { type: string, pattern: '^\d{6,14}$' } } } } } }
+      responses: { '201': { description: Imported }, '200': { description: Updated }, '422': { description: Not found in OFF } }
+
+  /categories:
+    get: { tags: [Taxonomies], responses: { '200': { description: Categories, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Category' } } } } } } }
+  /categories/{id}:
+    get: { tags: [Taxonomies], parameters: [{ $ref: '#/components/parameters/id' }], responses: { '200': { description: Category } } }
+  /allergens:
+    get: { tags: [Taxonomies], responses: { '200': { description: Allergens, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Allergen' } } } } } } }
+
+  /restaurants:
+    get:
+      tags: [Restaurants]
+      parameters:
+        - { name: q, in: query, schema: { type: string } }
+        - { name: city, in: query, schema: { type: string } }
+        - { name: cuisine, in: query, schema: { type: string } }
+        - { name: country, in: query, schema: { type: string } }
+        - { name: vegetarian, in: query, schema: { type: boolean } }
+        - { name: vegan, in: query, schema: { type: boolean } }
+        - { name: product_id, in: query, schema: { type: integer } }
+      responses: { '200': { description: Page of restaurants } }
+    post: { tags: [Restaurants], responses: { '201': { description: Created } } }
+  /restaurants/{id}:
+    parameters: [{ $ref: '#/components/parameters/id' }]
+    get: { tags: [Restaurants], responses: { '200': { description: Restaurant + products } } }
+    put: { tags: [Restaurants], responses: { '200': { description: Updated } } }
+    delete: { tags: [Restaurants], responses: { '204': { $ref: '#/components/responses/NoContent' } } }
+  /restaurants/{id}/products:
+    post: { tags: [Restaurants], parameters: [{ $ref: '#/components/parameters/id' }], requestBody: { content: { application/json: { schema: { type: object, required: [product_id], properties: { product_id: { type: integer }, dish_name: { type: string }, price: { type: number } } } } } }, responses: { '200': { description: Linked } } }
+  /restaurants/{id}/products/{productId}:
+    delete: { tags: [Restaurants], parameters: [{ $ref: '#/components/parameters/id' }, { name: productId, in: path, required: true, schema: { type: integer } }], responses: { '204': { $ref: '#/components/responses/NoContent' } } }
+
+  /preferences:
+    get:
+      tags: [Preferences]
+      parameters:
+        - { name: group_id, in: query, schema: { type: integer }, description: "missing = personal preferences" }
+        - { name: type, in: query, schema: { type: string, enum: [product, category, restaurant] } }
+        - { name: sentiment, in: query, schema: { $ref: '#/components/schemas/Sentiment' } }
+      responses: { '200': { description: Preferences, content: { application/json: { schema: { type: array, items: { $ref: '#/components/schemas/Preference' } } } } } }
+    post:
+      tags: [Preferences]
+      summary: Create or update (upsert) the preference for a target
+      requestBody: { content: { application/json: { schema: { type: object, required: [target_type, target_id, sentiment], properties: { target_type: { type: string, enum: [product, category, restaurant] }, target_id: { type: integer }, sentiment: { $ref: '#/components/schemas/Sentiment' }, rating: { type: integer }, notes: { type: string }, group_id: { type: integer } } } } } }
+      responses: { '201': { description: Created }, '200': { description: Updated } }
+  /preferences/{id}:
+    parameters: [{ $ref: '#/components/parameters/id' }]
+    put: { tags: [Preferences], responses: { '200': { description: Updated } } }
+    patch: { tags: [Preferences], responses: { '200': { description: Updated } } }
+    delete: { tags: [Preferences], responses: { '204': { $ref: '#/components/responses/NoContent' } } }
+  /preferences/recommendations:
+    get: { tags: [Preferences], summary: "Recommended products: liked categories, compatible, in season", responses: { '200': { description: Recommendations } } }
+
+  /groups:
+    get: { tags: [Groups], responses: { '200': { description: My groups } } }
+    post: { tags: [Groups], responses: { '201': { description: Created (the creator becomes the owner) } } }
+  /groups/{id}:
+    parameters: [{ $ref: '#/components/parameters/id' }]
+    get: { tags: [Groups], responses: { '200': { description: Group + members + restrictions } } }
+    put: { tags: [Groups], responses: { '200': { description: Updated } } }
+    delete: { tags: [Groups], responses: { '204': { $ref: '#/components/responses/NoContent' } } }
+  /groups/{id}/members:
+    post: { tags: [Groups], parameters: [{ $ref: '#/components/parameters/id' }], requestBody: { content: { application/json: { schema: { type: object, properties: { email: { type: string } } } } } }, responses: { '200': { description: Member added } } }
+  /groups/{id}/members/{user}:
+    delete: { tags: [Groups], parameters: [{ $ref: '#/components/parameters/id' }, { name: user, in: path, required: true, schema: { type: integer } }], responses: { '204': { $ref: '#/components/responses/NoContent' } } }
+  /groups/{id}/consensus:
+    get: { tags: [Groups], summary: "Shared favourites, conflicts, to avoid + common restrictions (strictest diet, union of allergens)", parameters: [{ $ref: '#/components/parameters/id' }], responses: { '200': { description: Consensus } } }
+
+  /shopping-lists:
+    get: { tags: [Shopping lists], parameters: [{ name: status, in: query, schema: { type: string, enum: [open, completed, archived] } }, { $ref: '#/components/parameters/groupId' }], responses: { '200': { description: Own and group lists } } }
+    post: { tags: [Shopping lists], requestBody: { content: { application/json: { schema: { type: object, required: [name], properties: { name: { type: string }, group_id: { type: integer }, planned_for: { type: string, format: date }, budget: { type: number } } } } } }, responses: { '201': { description: Created } } }
+  /shopping-lists/generate:
+    post:
+      tags: [Shopping lists]
+      summary: Auto-generate from preferences, respecting all members' restrictions, season and budget
+      requestBody: { content: { application/json: { schema: { type: object, properties: { name: { type: string }, group_id: { type: integer }, only_seasonal: { type: boolean }, max_items: { type: integer }, budget: { type: number }, planned_for: { type: string, format: date } } } } } }
+      responses: { '201': { description: Generated list, content: { application/json: { schema: { $ref: '#/components/schemas/ShoppingList' } } } } }
+  /shopping-lists/{id}:
+    parameters: [{ $ref: '#/components/parameters/id' }]
+    get: { tags: [Shopping lists], summary: "Details + compatibility warnings", responses: { '200': { description: List, content: { application/json: { schema: { $ref: '#/components/schemas/ShoppingList' } } } } } }
+    put: { tags: [Shopping lists], responses: { '200': { description: Updated } } }
+    patch: { tags: [Shopping lists], responses: { '200': { description: Updated } } }
+    delete: { tags: [Shopping lists], responses: { '204': { $ref: '#/components/responses/NoContent' } } }
+  /shopping-lists/{id}/duplicate:
+    post: { tags: [Shopping lists], parameters: [{ $ref: '#/components/parameters/id' }], responses: { '201': { description: Copy created } } }
+  /shopping-lists/{id}/export:
+    get: { tags: [Shopping lists], parameters: [{ $ref: '#/components/parameters/id' }, { $ref: '#/components/parameters/format' }], responses: { '200': { $ref: '#/components/responses/File' } } }
+  /shopping-lists/{id}/items:
+    post: { tags: [Shopping lists], parameters: [{ $ref: '#/components/parameters/id' }], requestBody: { content: { application/json: { schema: { $ref: '#/components/schemas/ShoppingListItem' } } } }, responses: { '201': { description: Added }, '200': { description: "Quantity incremented (product already on the list)" } } }
+  /shopping-lists/{id}/items/{item}:
+    parameters: [{ $ref: '#/components/parameters/id' }, { name: item, in: path, required: true, schema: { type: integer } }]
+    patch: { tags: [Shopping lists], responses: { '200': { description: Updated } } }
+    delete: { tags: [Shopping lists], responses: { '204': { $ref: '#/components/responses/NoContent' } } }
+  /shopping-lists/{id}/items/{item}/toggle:
+    patch: { tags: [Shopping lists], parameters: [{ $ref: '#/components/parameters/id' }, { name: item, in: path, required: true, schema: { type: integer } }], summary: "Check / uncheck (the list completes automatically)", responses: { '200': { description: Toggled } } }
+
+  /stats:
+    get: { tags: [Statistics], summary: Available reports, responses: { '200': { description: "overview, preferences-by-sentiment, top-products, categories, allergens, nutriscore, perishability, seasonality, spending, shopping-top-items" } } }
+  /stats/{report}:
+    get:
+      tags: [Statistics]
+      parameters: [{ name: report, in: path, required: true, schema: { type: string } }, { $ref: '#/components/parameters/scope' }, { $ref: '#/components/parameters/groupId' }]
+      responses: { '200': { description: Report, content: { application/json: { schema: { $ref: '#/components/schemas/Report' } } } } }
+  /stats/{report}/export:
+    get:
+      tags: [Statistics]
+      parameters: [{ name: report, in: path, required: true, schema: { type: string } }, { $ref: '#/components/parameters/format' }, { $ref: '#/components/parameters/scope' }, { $ref: '#/components/parameters/groupId' }]
+      responses: { '200': { $ref: '#/components/responses/File' } }
+  /stats/export/all:
+    get: { tags: [Statistics], summary: All reports in one PDF, parameters: [{ $ref: '#/components/parameters/scope' }, { $ref: '#/components/parameters/groupId' }], responses: { '200': { description: PDF, content: { application/pdf: { schema: { type: string, format: binary } } } } } }
+
+  /admin/users:
+    get: { tags: [Administration], parameters: [{ name: q, in: query, schema: { type: string } }, { name: role, in: query, schema: { type: string } }, { name: active, in: query, schema: { type: boolean } }], responses: { '200': { description: Users }, '403': { $ref: '#/components/responses/Forbidden' } } }
+    post: { tags: [Administration], responses: { '201': { description: Created } } }
+  /admin/users/{id}:
+    parameters: [{ $ref: '#/components/parameters/id' }]
+    get: { tags: [Administration], responses: { '200': { description: User } } }
+    put: { tags: [Administration], summary: "Role, activation/deactivation (revokes tokens), details", responses: { '200': { description: Updated } } }
+    patch: { tags: [Administration], responses: { '200': { description: Updated } } }
+    delete: { tags: [Administration], responses: { '204': { $ref: '#/components/responses/NoContent' } } }
+  /admin/users/export:
+    get: { tags: [Administration], parameters: [{ $ref: '#/components/parameters/format' }], responses: { '200': { $ref: '#/components/responses/File' } } }
+  /admin/categories:
+    post: { tags: [Administration], responses: { '201': { description: Created } } }
+  /admin/categories/{id}:
+    parameters: [{ $ref: '#/components/parameters/id' }]
+    put: { tags: [Administration], responses: { '200': { description: Updated } } }
+    delete: { tags: [Administration], responses: { '204': { $ref: '#/components/responses/NoContent' } } }
+  /admin/allergens:
+    post: { tags: [Administration], responses: { '201': { description: Created } } }
+  /admin/allergens/{id}:
+    parameters: [{ $ref: '#/components/parameters/id' }]
+    put: { tags: [Administration], responses: { '200': { description: Updated } } }
+    delete: { tags: [Administration], responses: { '204': { $ref: '#/components/responses/NoContent' } } }
