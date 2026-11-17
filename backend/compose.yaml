@@ -22,6 +22,27 @@ services:
             - sail
         depends_on:
             - pgsql
+    # Runs the Laravel scheduler (routes/console.php): downloads the ECB exchange rates
+    # on working days at 16:30 Berlin time. Same image and code as laravel.test.
+    scheduler:
+        build:
+            context: './vendor/laravel/sail/runtimes/8.5'
+            dockerfile: Dockerfile
+            args:
+                WWWGROUP: '${WWWGROUP}'
+        image: 'sail-8.5/app'
+        command: php artisan schedule:work
+        environment:
+            WWWUSER: '${WWWUSER}'
+            LARAVEL_SAIL: 1
+        volumes:
+            - '.:/var/www/html'
+        networks:
+            - sail
+        depends_on:
+            - laravel.test
+            - pgsql
+        restart: unless-stopped
     pgsql:
         image: 'postgres:18-alpine'
         ports:
