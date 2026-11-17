@@ -15,7 +15,6 @@ Thumbs.db
 .env
 .env.*
 !.env.example
-!.env.culinar.example
 
 # ---------- Backend: Laravel / PHP ----------
 vendor/
