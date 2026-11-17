@@ -17,8 +17,9 @@
 <script>
     window.onload = () => {
         window.ui = SwaggerUIBundle({
-            // the spec lives next to this page: public/docs/openapi.yaml
-            url: 'openapi.yaml',
+            // absolute path: the page can be opened as /docs or /docs/ and a relative
+            // "openapi.yaml" would then point to /openapi.yaml (404)
+            url: '/docs/openapi.yaml',
             dom_id: '#swagger-ui',
             deepLinking: true,
             // keeps the Bearer token after a page reload ("Authorize" button)
