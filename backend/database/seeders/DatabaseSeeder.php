@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->seedReferenceData();
+        $this->seedAdminFromEnvironment();
 
         // Demo accounts all use the password "password": never create them on a live server
         // unless explicitly asked for (SEED_DEMO=true in .env).
@@ -25,6 +26,30 @@ class DatabaseSeeder extends Seeder
             return;
         }
         $this->seedDemoData();
+    }
+
+    /**
+     * The first administrator of a live server, from ADMIN_EMAIL / ADMIN_PASSWORD / ADMIN_NAME.
+     * An existing account is only promoted to admin: its password is never overwritten.
+     */
+    private function seedAdminFromEnvironment(): void
+    {
+        $email = strtolower(trim((string) env('ADMIN_EMAIL', '')));
+        $password = (string) env('ADMIN_PASSWORD', '');
+        if ($email === '' || $password === '') {
+            return;
+        }
+        if (strlen($password) < 12) {
+            $this->command?->warn('ADMIN_PASSWORD must have at least 12 characters: no administrator was created.');
+            return;
+        }
+
+        $user = User::firstOrCreate(['email' => $email], [
+            'name' => env('ADMIN_NAME', 'Administrator'),
+            'password' => $password, // hashed by the model cast
+        ]);
+        $user->forceFill(['role' => 'admin', 'is_active' => true])->save();
+        $this->command?->info("Administrator: {$email}");
     }
 
     /** Allergens and categories: needed in every environment (OFF import maps onto them). */

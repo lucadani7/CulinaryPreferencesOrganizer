@@ -1,0 +1,56 @@
+# Render Blueprint: the Laravel API (Docker). The frontend is deployed on Vercel
+# and the PostgreSQL database is on Neon. Values marked "sync: false" are asked for
+# in the Render dashboard when the Blueprint is created.
+services:
+  - type: web
+    name: culinary-preferences-api
+    runtime: docker
+    plan: free
+    region: frankfurt
+    rootDir: backend
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: APP_NAME
+        value: Culinary Preferences Organizer
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: "false"
+      # sail artisan key:generate --show
+      - key: APP_KEY
+        sync: false
+      - key: APP_URL
+        value: https://api.cpo.getastrobyte.com
+      - key: DB_CONNECTION
+        value: pgsql
+      # Neon connection string (the direct one, not "-pooler"), e.g.
+      # postgresql://user:password@ep-xxx.eu-central-1.aws.neon.tech/neondb?sslmode=require
+      - key: DB_URL
+        sync: false
+      - key: DB_SSLMODE
+        value: require
+      # the frontend on Vercel (comma-separated)
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://cpo.getastrobyte.com
+      - key: TRUSTED_PROXIES
+        value: "*"
+      - key: FILESYSTEM_DISK
+        value: public
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: CACHE_STORE
+        value: database
+      - key: OFF_USER_AGENT
+        sync: false
+      # first deploy: true (creates allergens, categories and the administrator), then false
+      - key: RUN_SEED
+        value: "true"
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: SEED_DEMO
+        value: "false"
