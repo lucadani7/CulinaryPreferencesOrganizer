@@ -1,0 +1,58 @@
+# ---------- OS & editors ----------
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.fleet/
+.nova/
+.zed/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# ---------- Environment variables ----------
+.env
+.env.*
+!.env.example
+!.env.culinar.example
+
+# ---------- Backend: Laravel / PHP ----------
+vendor/
+.phpunit.cache/
+.phpunit.result.cache
+.phpactor.json
+auth.json
+Homestead.json
+Homestead.yaml
+**/storage/*.key
+**/storage/pail/
+**/storage/logs/*.log
+**/storage/framework/cache/data/*
+**/storage/framework/sessions/*
+**/storage/framework/views/*
+**/storage/framework/testing/*
+**/storage/app/public/products/
+**/public/storage
+**/public/hot
+**/public/build/
+**/bootstrap/cache/*.php
+
+# ---------- Frontend: Node / Vite / pnpm ----------
+node_modules/
+.pnpm-store/
+dist/
+dist-ssr/
+*.tsbuildinfo
+*.local
+
+# ---------- Logs ----------
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ---------- Docker ----------
+docker-compose.override.yml
+compose.override.yaml
