@@ -113,12 +113,13 @@ export default function Layout() {
             <span className="avatar" aria-hidden>
               {user?.name.slice(0, 1).toUpperCase()}
             </span>
-            <span>
+            {/* hidden on phones: the avatar alone links to the profile */}
+            <span className="user-chip__name">
               {user?.name}
               {user?.role === 'admin' && <small className="muted"> · admin</small>}
             </span>
           </Link>
-          <button type="button" className="btn btn--ghost" onClick={() => void onLogout()}>
+          <button type="button" className="btn btn--ghost topbar__logout" onClick={() => void onLogout()}>
             Log out
           </button>
         </header>

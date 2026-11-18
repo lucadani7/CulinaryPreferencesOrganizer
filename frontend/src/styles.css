@@ -106,12 +106,13 @@ textarea { resize: vertical; }
 .nav__section { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: #8fae88; margin: 1.3rem 0.7rem 0.4rem; }
 .sidebar__footer { margin-top: auto; padding: 1rem 0.5rem 0; color: #8fae88; }
 .sidebar__footer a { color: #bfe0b6; }
-.main { flex: 1; margin-left: var(--sidebar); min-width: 0; }
+.main { flex: 1; margin-left: var(--sidebar); min-width: 0; overflow-x: clip; }
 .topbar { display: flex; align-items: center; gap: 0.75rem; padding: 0.7rem 1.6rem; background: var(--surface); border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 20; }
 .topbar__spacer { flex: 1; }
 .topbar__menu { display: none; }
 .user-chip { color: inherit; text-decoration: none; display: flex; align-items: center; gap: 0.5rem; background: none; border: none; font: inherit; cursor: pointer; padding: 0.25rem 0.5rem; border-radius: 99px; }
 .user-chip:hover { background: var(--surface-2); text-decoration: none; }
+.user-chip__name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 16rem; }
 .brand:hover { text-decoration: none; }
 .avatar { width: 30px; height: 30px; border-radius: 50%; background: var(--primary); color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 0.85rem; }
 .content { padding: 1.6rem; max-width: 1400px; }
@@ -400,3 +401,18 @@ a.list__row:hover { text-decoration: none; }
 .money { white-space: nowrap; }
 .money__local { margin-left: 0.35em; color: var(--muted); font-weight: 400; font-size: 0.78em; }
 .big .money__local { display: block; margin-left: 0; font-size: 0.6em; }
+
+/* ---------- phones */
+@media (max-width: 640px) {
+  .topbar { padding: 0.55rem 0.8rem; gap: 0.4rem; }
+  .user-chip { padding: 0.2rem; }
+  .user-chip__name { display: none; }
+  .topbar__logout { padding: 0.35rem 0.7rem; font-size: 0.85rem; }
+  /* the four dashboard figures, two per row */
+  .stats-row { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.6rem; }
+  .stat { padding: 0.8rem 0.9rem; }
+  .stat__value { font-size: 1.5rem; }
+  .page-header h1 { font-size: 1.35rem; }
+  .page-header__actions { width: 100%; }
+  .page-header__actions > * { flex: 1 1 auto; }
+}
